@@ -6,9 +6,9 @@
 ;
 ;Creates, changes and deletes volume labels! 
 ;Invoked by: 
-; LABEL [volume:] [label]       <- Jumps to the prompt to change the label
-; LABEL [volume:]               <- Prints the current label for volume, go to line above.
-; LABEL                         <- Assumes current drive. Goes to line above.
+; LABEL [volume:][label] <- Jumps to the prompt to change the label
+; LABEL [volume:]        <- Prints current label for vol, go to line above.
+; LABEL                  <- Assumes current drive. Goes to line above.
 
 BITS 64
 %include "./inc/dosMacro.mac"

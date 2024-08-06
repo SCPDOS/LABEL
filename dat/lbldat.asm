@@ -1,7 +1,7 @@
 
 ;Label data
 
-lblPtr  dq 0    ;Pointer to the label or 0 if no label specified on command line
+lblGvn  db 0    ;If set, the label is in the inBuffer already
 drvNum  db 0    ;1 based drive number we are modifying label for
 
 ;Strings
@@ -23,4 +23,4 @@ volFcb:
     at exFcb.curBlock,  dd 0
     iend 
 
-inBuffer    db 12, 0, 12 dup (0)
+inBuffer    db 12, 0, 12 dup (SPC)

@@ -11,15 +11,15 @@ Output file:  ./bin/LABEL.COM
 -- Sections (summary) ---------------------------------------------------------
 
 Vstart            Start             Stop              Length    Class     Name
-               0                 0               2BE  000002BE  progbits  .text
-             2C0               2C0               428  00000168  nobits    transient
+               0                 0               333  00000333  progbits  .text
+             338               338               4A0  00000168  nobits    transient
 
 -- Sections (detailed) --------------------------------------------------------
 
 ---- Section .text ------------------------------------------------------------
 
 class:     progbits
-length:                 2BE
+length:                 333
 start:                    0
 align:     not defined
 follows:   not defined
@@ -31,10 +31,10 @@ vfollows:  not defined
 
 class:     nobits
 length:                 168
-start:                  2C0
+start:                  338
 align:                    8
 follows:   not defined
-vstart:                 2C0
+vstart:                 338
 valign:                   8
 vfollows:  .text
 
@@ -506,41 +506,53 @@ Value     Name
 Real              Virtual           Name
                0                 0  startLabel
               13                13  parseCmdLine
-              48                48  parseCmdLine.labelFnd
-              4F                4F  processCmdline
-              A6                A6  processCmdline.lblFnd
-              C7                C7  doLbl
-              D3                D3  getLbL
-              E4                E4  inLbL
-              FE                FE  parseLbl
-             112               112  mkLbl
-             126               126  badLbL
-             146               146  delLbl
-             172               172  renLbl
-             199               199  exit
-             1A0               1A0  printNewline
-             1A7               1A7  printCRLF
-             1AE               1AE  printLF
-             1B0               1B0  printLF.goChar
-             1B7               1B7  ..@67._ret
-             1B8               1B8  printStr
-             1BF               1BF  ..@68._ret
-             1C0               1C0  skipDelims
-             1D8               1D8  ..@69._ret
-             1D9               1D9  lblPtr
-             1E1               1E1  drvNum
-             1E2               1E2  volStr
-             1F3               1F3  volOkS
-             1F8               1F8  volNoS
-             206               206  vBadStr
-             22A               22A  vPrmptS
-             259               259  searchDta
-             284               284  volFcb
-             284               284  ..@71.strucstart
-             2B0               2B0  inBuffer
+              47                47  parseCmdLine.labelFnd
+              55                55  parseCmdLine.lblCpyLp
+              6E                6E  processCmdline
+              87                87  setDTA
+              DF                DF  setDTA.lblFnd
+             100               100  doLbl
+             10A               10A  getLbL
+             11B               11B  inLbL
+             131               131  parseLbl
+             157               157  mkLbl
+             16F               16F  badLbL
+             1A0               1A0  delLbl
+             1CC               1CC  renLbl
+             1F7               1F7  exit
+             203               203  printNewline
+             20A               20A  printCRLF
+             211               211  printLF
+             213               213  printChar
+             21A               21A  ..@68._base
+             21C               21C  ..@69._ret
+             21D               21D  ..@68.a
+             224               224  ..@70._ret
+             225               225  printStr
+             22C               22C  ..@72._base
+             235               235  ..@73._ret
+             236               236  skipDelims
+             241               241  ..@74._ret
+             242               242  isALDelim
+             244               244  ..@76._base
+             248               248  ..@78._base
+             24C               24C  ..@80._base
+             250               250  ..@82._base
+             254               254  ..@83._ret
+             255               255  lblGvn
+             256               256  drvNum
+             257               257  volStr
+             268               268  volOkS
+             26D               26D  volNoS
+             27B               27B  vBadStr
+             29F               29F  vPrmptS
+             2CE               2CE  searchDta
+             2F9               2F9  volFcb
+             2F9               2F9  ..@85.strucstart
+             325               325  inBuffer
 
 ---- Section transient --------------------------------------------------------
 
 Real              Virtual           Name
-             428               428  endOfAlloc
+             4A0               4A0  endOfAlloc
 
