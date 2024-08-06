@@ -43,10 +43,10 @@ processCmdline:
 
     lea rdx, volFcb
     mov al, byte [drvNum]   ;Get the 1 based drive number
-    mov byte [rdx + volFcb + exFcb.driveNum], al    
+    mov byte [rdx + exFcb.driveNum], al    ;Store in search FCB
     mov eax, 1100h  ;Find First FCB
     int 21h
-    mov dl, byte [rdx + volFcb + exFcb.driveNum]    ;Get 0 based number
+    mov dl, byte [rdx + exFcb.driveNum]    ;Get 0 based number
     add dl, "A"
     mov eax, 0200h  ;Print the drive letter
     int 21h
