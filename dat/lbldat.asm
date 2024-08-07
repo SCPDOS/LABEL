@@ -10,7 +10,7 @@ volOkS  db " is $"
 volNoS  db " has no label$"
 vBadStr db "Invalid characters in volume label",CR,LF
 vPrmptS db "Volume label (11 characters, ENTER for none)? $"
-
+delStr  db "Delete current volume label (Y/N)? $"
 ;Static Allocations
 searchDta   db ffBlock_size dup (0)  ;This is where we get the label info
 volFcb:
