@@ -593,6 +593,20 @@
    496                              <1> termChar    equ 2   ;Terminator char type
    497                              <1> sepChar     equ 4   ;Separator char type
    498                              <1> badFCBChar  equ 8   ;FCB filename char
+   499                              <1> 
+   500                              <1> struc sysVars
+   501 00000000 ????????????????    <1>     dq ?
+   502 00000008 ????????????????    <1>     dq ?
+   503 00000010 ????????????????    <1>     dq ?
+   504 00000018 ????????????????    <1>     dq ?
+   505 00000020 ????                <1>     dw ?
+   506 00000022 ????????????????    <1>     dq ?
+   507 0000002A ????????????????    <1>     .cdsHeadPtr  dq ?
+   508 00000032 ????????????????    <1>     dq ?
+   509 0000003A ????                <1>     dw ?
+   510 0000003C ??                  <1>     db ?
+   511 0000003D ??                  <1>     .lastdrvNum  db ?
+   512                              <1> endstruc
     16                                  %include "./inc/dosError.inc"
      1                              <1> ;DOS Error codes
      2                              <1> 
@@ -801,7 +815,7 @@
      9                              <1> ;Now parse the command line
     10 00000013 498DB081000000      <1>     lea rsi, qword [r8 + psp.progTail]
     11 0000001A 31C0                <1>     xor eax, eax    ;Clear all upper bytes for fun
-    12 0000001C E882020000          <1>     call skipDelims ;Goto the first non-delimiter char
+    12 0000001C E8E0020000          <1>     call skipDelims ;Goto the first non-delimiter char
     13 00000021 3C0D                <1>     cmp al, CR  ;If empty command line, deal with it later
     14 00000023 744E                <1>     je processCmdline
     15                              <1>     ;If the second char is not colon, assumed to be label for the curdrv
@@ -812,172 +826,203 @@
     20 0000002C B813120000          <1>     mov eax, 1213h  ;Call on DOS to uppercase char in al.
     21 00000031 CD2F                <1>     int 2fh
     22 00000033 2C40                <1>     sub al, "@" ;Convert into a 1 based drive number (so 0 means curdrv)
-    23 00000035 880588020000        <1>     mov byte [drvNum], al
+    23 00000035 8805E6020000        <1>     mov byte [drvNum], al
     24 0000003B 58                  <1>     pop rax ;Renormalise the stack
     25                              <1>     ;The first non-delim char immediately after the colon is the label
     26 0000003C 4881C602000000      <1>     add rsi, 2  ;Go past the colon
     27                              <1> ;Check the first char past the colon is not a CR. If it is, avoid setting
     28                              <1> ; the pointer to the CR. No need to move below .labelFnd as the check 
     29                              <1> ; in the case we jump is already made
-    30 00000043 E85B020000          <1>     call skipDelims
+    30 00000043 E8B9020000          <1>     call skipDelims
     31 00000048 3C0D                <1>     cmp al, CR
     32 0000004A 7427                <1>     je processCmdline
     33                              <1> .labelFnd:
     34                              <1> ;If a volume label is passed on the command line, copy it into the inBuffer
     35                              <1> ; until a delimiter is hit
-    36 0000004C C6056F020000FF      <1>     mov byte [lblGvn], -1   ;Set the flag that a label in inBuffer + 2
-    37 00000053 488D3D5E030000      <1>     lea rdi, inBuffer + 2
+    36 0000004C C605CD020000FF      <1>     mov byte [lblGvn], -1   ;Set the flag that a label in inBuffer + 2
+    37 00000053 488D3D2C040000      <1>     lea rdi, inBuffer + 2
     38                              <1> .lblCpyLp:
     39 0000005A AC                  <1>     lodsb
-    40 0000005B E84F020000          <1>     call isALDelim
+    40 0000005B E8AD020000          <1>     call isALDelim
     41 00000060 7411                <1>     je processCmdline
     42 00000062 AA                  <1>     stosb
-    43 00000063 FE054E030000        <1>     inc byte [inBuffer + 1] ;Increment the count
+    43 00000063 FE051C040000        <1>     inc byte [inBuffer + 1] ;Increment the count
     44 00000069 3C0D                <1>     cmp al, CR  ;Did we just store a CR?
     45 0000006B 75ED                <1>     jne .lblCpyLp   ;If not, keep going
-    46 0000006D FE0D44030000        <1>     dec byte [inBuffer + 1] ;Remove the terminating CR from the count
+    46 0000006D FE0D12040000        <1>     dec byte [inBuffer + 1] ;Remove the terminating CR from the count
     47                              <1> processCmdline:
     48                              <1> ;Now we have a label pointer, a disk number etc. 
     49                              <1> ;Now ensure that a drive number of 0 is converted to the actual 1 based number
-    50 00000073 8A054A020000        <1>     mov al, byte [drvNum]
+    50 00000073 8A05A8020000        <1>     mov al, byte [drvNum]
     51 00000079 84C0                <1>     test al, al
-    52 0000007B 750F                <1>     jnz setDTA
+    52 0000007B 750F                <1>     jnz doDrvCheck
     53 0000007D B800190000          <1>     mov eax, 1900h  ;Get the current 0 based drive number in al
     54 00000082 CD21                <1>     int 21h
     55 00000084 FEC0                <1>     inc al
-    56 00000086 880537020000        <1>     mov byte [drvNum], al
-    57                              <1> setDTA:
-    58                              <1> ;Set the DTA to an internal DTA and do a find first
-    59 0000008C 488D15CC020000      <1>     lea rdx, searchDta
-    60 00000093 B8001A0000          <1>     mov eax, 1A00h  ;Set DTA to interneal data
-    61 00000098 CD21                <1>     int 21h
-    62                              <1> 
-    63 0000009A 488D15E9020000      <1>     lea rdx, volFcb
-    64 000000A1 8A051C020000        <1>     mov al, byte [drvNum]   ;Get the 1 based drive number
-    65 000000A7 884207              <1>     mov byte [rdx + exFcb.driveNum], al    ;Store in search FCB
-    66 000000AA B800110000          <1>     mov eax, 1100h  ;Find First FCB
-    67 000000AF CD21                <1>     int 21h
-    68 000000B1 0FBEE8              <1>     movsx ebp, al
-    69                              <1> 
-    70 000000B4 E89D010000          <1>     call printLabel
-    71 000000B9 8A0503020000        <1>     mov al, byte [lblGvn]   ;Check the command line lbl flag
-    72 000000BF 84C0                <1>     test al, al
-    73 000000C1 7533                <1>     jnz parseLbl
-    74                              <1> getLbL:
-    75 000000C3 E85B010000          <1>     call printNewline
-    76 000000C8 488D153D020000      <1>     lea rdx, vPrmptS
-    77 000000CF E871010000          <1>     call printStr
-    78                              <1> inLbL:
-    79 000000D4 488D15DB020000      <1>     lea rdx, inBuffer
-    80 000000DB B8000A0000          <1>     mov eax, 0A00h
-    81 000000E0 CD21                <1>     int 21h
-    82 000000E2 E843010000          <1>     call printCRLF
-    83 000000E7 66813DC7020000000D  <1>     cmp word [inBuffer + 1], 0D00h   ;If only a CR was entered, then delete
-    84 000000F0 0F847F000000        <1>     je delLbl
-    85                              <1> parseLbl:
-    86 000000F6 488D35BB020000      <1>     lea rsi, qword [inBuffer + 2]    ;Else get the pointer in rsi
-    87 000000FD 0FB61DB3020000      <1>     movzx ebx, byte [inBuffer + 1]   ;Get the chars typed in
-    88 00000104 C6041E20            <1>     mov byte [rsi + rbx], SPC   ;Cover the CR with a space!
-    89                              <1> 
-    90 00000108 488D157B020000      <1>     lea rdx, volFcb
-    91 0000010F 8A05AE010000        <1>     mov al, byte [drvNum]
-    92 00000115 884207              <1>     mov byte [rdx + exFcb.driveNum], al ;Store the drive number here
-    93 00000118 85ED                <1>     test ebp, ebp
-    94 0000011A 0F84CC000000        <1>     jz renLbl
-    95                              <1> mkLbl:
-    96 00000120 488D7A08            <1>     lea rdi, qword [rdx + exFcb.filename]
-    97 00000124 48A5                <1>     movsq
-    98 00000126 66A5                <1>     movsw
-    99 00000128 A4                  <1>     movsb
-   100 00000129 B800160000          <1>     mov eax, 1600h  ;FCB Create
-   101 0000012E CD21                <1>     int 21h
-   102 00000130 84C0                <1>     test al, al
-   103 00000132 0F84DF000000        <1>     jz exit
-   104                              <1> badLbL:
-   105 00000138 31C0                <1>     xor eax, eax
-   106 0000013A 860582010000        <1>     xchg al, byte [lblGvn]    ;No longer use the label given if one was given!
-   107 00000140 50                  <1>     push rax
-   108 00000141 85C0                <1>     test eax, eax
-   109 00000143 7405                <1>     jz .l1
-   110 00000145 E80C010000          <1>     call printLabel ;If the label was given, we need to print the label header
-   111                              <1> .l1:
-   112 0000014A E8D4000000          <1>     call printNewline
-   113 0000014F 488D1592010000      <1>     lea rdx, vBadStr
-   114 00000156 E8EA000000          <1>     call printStr
-   115 0000015B 488D3D56020000      <1>     lea rdi, inBuffer + 2
-   116 00000162 C647FF00            <1>     mov byte [rdi - 1], 0
-   117 00000166 48FFC7              <1>     inc rdi
-   118 00000169 B020                <1>     mov al, SPC
-   119 0000016B B10C                <1>     mov cl, 12
-   120 0000016D F3AA                <1>     rep stosb
-   121 0000016F 58                  <1>     pop rax ;Get the lblGvn status
-   122 00000170 E95FFFFFFF          <1>     jmp inLbL
-   123                              <1> delLbl:
-   124 00000175 85ED                <1>     test ebp, ebp   ;If there is no label, just exit
-   125 00000177 0F859A000000        <1>     jnz exit
-   126                              <1> .l1:
-   127 0000017D E8A8000000          <1>     call printCRLF
-   128 00000182 488D15B2010000      <1>     lea rdx, delStr
-   129 00000189 E8B7000000          <1>     call printStr
-   130 0000018E 488D1521020000      <1>     lea rdx, inBuffer 
-   131 00000195 C70202000000        <1>     mov dword [rdx], 2  ;Make space for a Y/N and CR
-   132 0000019B B8000A0000          <1>     mov eax, 0A00h
-   133 000001A0 CD21                <1>     int 21h
-   134 000001A2 E883000000          <1>     call printCRLF
-   135 000001A7 8A050B020000        <1>     mov al, byte [inBuffer + 2]
-   136 000001AD 50                  <1>     push rax
-   137 000001AE B813120000          <1>     mov eax, 1213h  ;Uppercase the char
-   138 000001B3 CD2F                <1>     int 2fh
-   139 000001B5 5B                  <1>     pop rbx
-   140 000001B6 3C4E                <1>     cmp al, "N"
-   141 000001B8 745D                <1>     je exit
-   142 000001BA 3C59                <1>     cmp al, "Y"
-   143 000001BC 7402                <1>     je .goDel
-   144 000001BE EBBD                <1>     jmp short .l1
-   145                              <1> .goDel:
-   146 000001C0 488D15C3010000      <1>     lea rdx, volFcb
-   147 000001C7 8A05F6000000        <1>     mov al, byte [drvNum]
-   148 000001CD 884207              <1>     mov byte [rdx + exFcb.driveNum], al ;Store the drive number here
-   149 000001D0 488D7A08            <1>     lea rdi, qword [rdx + exFcb.filename]
-   150 000001D4 48B83F3F3F3F3F3F3F- <1>     mov rax, "????????"
-   150 000001DD 3F                  <1>
-   151 000001DE 48AB                <1>     stosq
-   152 000001E0 66AB                <1>     stosw
-   153 000001E2 AA                  <1>     stosb   
-   154 000001E3 B800130000          <1>     mov eax, 1300h  ;FCB Delete
-   155 000001E8 CD21                <1>     int 21h
-   156 000001EA EB2B                <1>     jmp short exit
-   157                              <1> renLbl:
-   158 000001EC 488D7A08            <1>     lea rdi, qword [rdx + exRenFcb.filename]
-   159 000001F0 48B83F3F3F3F3F3F3F- <1>     mov rax, "????????"
-   159 000001F9 3F                  <1>
-   160 000001FA 48AB                <1>     stosq
-   161 000001FC 66AB                <1>     stosw
-   162 000001FE AA                  <1>     stosb
-   163 000001FF 488D7A18            <1>     lea rdi, qword [rdx + exRenFcb.newName]
-   164 00000203 48A5                <1>     movsq
-   165 00000205 66A5                <1>     movsw
-   166 00000207 A4                  <1>     movsb
-   167 00000208 B800170000          <1>     mov eax, 1700h  ;FCB Rename
-   168 0000020D CD21                <1>     int 21h
-   169 0000020F 84C0                <1>     test al, al
-   170 00000211 0F8521FFFFFF        <1>     jnz badLbL
-   171                              <1> exit:
-   172 00000217 E80E000000          <1>     call printCRLF
-   173 0000021C B8004C0000          <1>     mov eax, 4C00h
-   174 00000221 CD21                <1>     int 21h
-   175                              <1> ;Misc subroutines
-   176                              <1> printNewline:
-   177 00000223 E802000000          <1>     call printCRLF
-   178 00000228 EB07                <1>     jmp short printLF
-   179                              <1> printCRLF:
-   180 0000022A B20D                <1>     mov dl, CR
-   181 0000022C E802000000          <1>     call printChar
-   182                              <1> printLF:
-   183 00000231 B20A                <1>     mov dl, LF
-   184                              <1> printChar:
-   185 00000233 F60588000000FF      <1>     test byte [lblGvn], -1
-   186                              <1>     retnz
+    56 00000086 880595020000        <1>     mov byte [drvNum], al
+    57                              <1> doDrvCheck:
+    58                              <1> ;Make sure the drive chosen is not SUBST/JOIN/NET.
+    59 0000008C 0FB6C8              <1>     movzx ecx, al ;Save the 1 based drive number in ecx
+    60 0000008F B800520000          <1>     mov eax, 5200h
+    61 00000094 CD21                <1>     int 21h
+    62 00000096 384B3D              <1>     cmp byte [rbx + sysVars.lastdrvNum], cl
+    63 00000099 7315                <1>     jnb .drvOk
+    64                              <1> .badDrvExit:
+    65 0000009B 488D151B030000      <1>     lea rdx, badDrv
+    66                              <1> .badPrintExit:
+    67 000000A2 B800090000          <1>     mov eax, 0900h
+    68 000000A7 CD21                <1>     int 21h
+    69 000000A9 B8FF4C0000          <1>     mov eax, 4CFFh
+    70 000000AE CD21                <1>     int 21h
+    71                              <1> .drvOk:
+    72 000000B0 FEC9                <1>     dec cl  ;Turn into an offset into the CDS
+    73 000000B2 488B7B2A            <1>     mov rdi, qword [rbx + sysVars.cdsHeadPtr]
+    74 000000B6 B85F000000          <1>     mov eax, cds_size
+    75 000000BB F7E1                <1>     mul ecx
+    76 000000BD 4801C7              <1>     add rdi, rax
+    77 000000C0 66F747430040        <1>     test word [rdi + cds.wFlags], cdsValidDrive
+    78 000000C6 74D3                <1>     jz .badDrvExit  ;If it is not valid, error out!
+    79 000000C8 66F747430080        <1>     test word [rdi + cds.wFlags], cdsRedirDrive
+    80 000000CE 7409                <1>     jz .drvNotNet
+    81 000000D0 488D1537030000      <1>     lea rdx, netDrv
+    82 000000D7 EBC9                <1>     jmp short .badPrintExit
+    83                              <1> .drvNotNet:
+    84 000000D9 66F747430030        <1>     test word [rdi + cds.wFlags], cdsSubstDrive | cdsJoinDrive
+    85 000000DF 7409                <1>     jz setDTA
+    86 000000E1 488D15F3020000      <1>     lea rdx, jsaDrv
+    87 000000E8 EBB8                <1>     jmp short .badPrintExit
+    88                              <1> setDTA:
+    89                              <1> ;Now set the DTA to an internal DTA and do a find first
+    90 000000EA 488D153C030000      <1>     lea rdx, searchDta
+    91 000000F1 B8001A0000          <1>     mov eax, 1A00h  ;Set DTA to interneal data
+    92 000000F6 CD21                <1>     int 21h
+    93                              <1> 
+    94 000000F8 488D1559030000      <1>     lea rdx, volFcb
+    95 000000FF 8A051C020000        <1>     mov al, byte [drvNum]   ;Get the 1 based drive number
+    96 00000105 884207              <1>     mov byte [rdx + exFcb.driveNum], al    ;Store in search FCB
+    97 00000108 B800110000          <1>     mov eax, 1100h  ;Find First FCB
+    98 0000010D CD21                <1>     int 21h
+    99 0000010F 0FBEE8              <1>     movsx ebp, al
+   100                              <1> 
+   101 00000112 E89D010000          <1>     call printLabel
+   102 00000117 8A0503020000        <1>     mov al, byte [lblGvn]   ;Check the command line lbl flag
+   103 0000011D 84C0                <1>     test al, al
+   104 0000011F 7533                <1>     jnz parseLbl
+   105                              <1> getLbL:
+   106 00000121 E85B010000          <1>     call printNewline
+   107 00000126 488D153D020000      <1>     lea rdx, vPrmptS
+   108 0000012D E871010000          <1>     call printStr
+   109                              <1> inLbL:
+   110 00000132 488D154B030000      <1>     lea rdx, inBuffer
+   111 00000139 B8000A0000          <1>     mov eax, 0A00h
+   112 0000013E CD21                <1>     int 21h
+   113 00000140 E843010000          <1>     call printCRLF
+   114 00000145 66813D37030000000D  <1>     cmp word [inBuffer + 1], 0D00h   ;If only a CR was entered, then delete
+   115 0000014E 0F847F000000        <1>     je delLbl
+   116                              <1> parseLbl:
+   117 00000154 488D352B030000      <1>     lea rsi, qword [inBuffer + 2]    ;Else get the pointer in rsi
+   118 0000015B 0FB61D23030000      <1>     movzx ebx, byte [inBuffer + 1]   ;Get the chars typed in
+   119 00000162 C6041E20            <1>     mov byte [rsi + rbx], SPC   ;Cover the CR with a space!
+   120                              <1> 
+   121 00000166 488D15EB020000      <1>     lea rdx, volFcb
+   122 0000016D 8A05AE010000        <1>     mov al, byte [drvNum]
+   123 00000173 884207              <1>     mov byte [rdx + exFcb.driveNum], al ;Store the drive number here
+   124 00000176 85ED                <1>     test ebp, ebp
+   125 00000178 0F84CC000000        <1>     jz renLbl
+   126                              <1> mkLbl:
+   127 0000017E 488D7A08            <1>     lea rdi, qword [rdx + exFcb.filename]
+   128 00000182 48A5                <1>     movsq
+   129 00000184 66A5                <1>     movsw
+   130 00000186 A4                  <1>     movsb
+   131 00000187 B800160000          <1>     mov eax, 1600h  ;FCB Create
+   132 0000018C CD21                <1>     int 21h
+   133 0000018E 84C0                <1>     test al, al
+   134 00000190 0F84DF000000        <1>     jz exit
+   135                              <1> badLbL:
+   136 00000196 31C0                <1>     xor eax, eax
+   137 00000198 860582010000        <1>     xchg al, byte [lblGvn]    ;No longer use the label given if one was given!
+   138 0000019E 50                  <1>     push rax
+   139 0000019F 85C0                <1>     test eax, eax
+   140 000001A1 7405                <1>     jz .l1
+   141 000001A3 E80C010000          <1>     call printLabel ;If the label was given, we need to print the label header
+   142                              <1> .l1:
+   143 000001A8 E8D4000000          <1>     call printNewline
+   144 000001AD 488D1592010000      <1>     lea rdx, vBadStr
+   145 000001B4 E8EA000000          <1>     call printStr
+   146 000001B9 488D3DC6020000      <1>     lea rdi, inBuffer + 2
+   147 000001C0 C647FF00            <1>     mov byte [rdi - 1], 0
+   148 000001C4 48FFC7              <1>     inc rdi
+   149 000001C7 B020                <1>     mov al, SPC
+   150 000001C9 B10C                <1>     mov cl, 12
+   151 000001CB F3AA                <1>     rep stosb
+   152 000001CD 58                  <1>     pop rax ;Get the lblGvn status
+   153 000001CE E95FFFFFFF          <1>     jmp inLbL
+   154                              <1> delLbl:
+   155 000001D3 85ED                <1>     test ebp, ebp   ;If there is no label, just exit
+   156 000001D5 0F859A000000        <1>     jnz exit
+   157                              <1> .l1:
+   158 000001DB E8A8000000          <1>     call printCRLF
+   159 000001E0 488D15B2010000      <1>     lea rdx, delStr
+   160 000001E7 E8B7000000          <1>     call printStr
+   161 000001EC 488D1591020000      <1>     lea rdx, inBuffer 
+   162 000001F3 C70202000000        <1>     mov dword [rdx], 2  ;Make space for a Y/N and CR
+   163 000001F9 B8000A0000          <1>     mov eax, 0A00h
+   164 000001FE CD21                <1>     int 21h
+   165 00000200 E883000000          <1>     call printCRLF
+   166 00000205 8A057B020000        <1>     mov al, byte [inBuffer + 2]
+   167 0000020B 50                  <1>     push rax
+   168 0000020C B813120000          <1>     mov eax, 1213h  ;Uppercase the char
+   169 00000211 CD2F                <1>     int 2fh
+   170 00000213 5B                  <1>     pop rbx
+   171 00000214 3C4E                <1>     cmp al, "N"
+   172 00000216 745D                <1>     je exit
+   173 00000218 3C59                <1>     cmp al, "Y"
+   174 0000021A 7402                <1>     je .goDel
+   175 0000021C EBBD                <1>     jmp short .l1
+   176                              <1> .goDel:
+   177 0000021E 488D1533020000      <1>     lea rdx, volFcb
+   178 00000225 8A05F6000000        <1>     mov al, byte [drvNum]
+   179 0000022B 884207              <1>     mov byte [rdx + exFcb.driveNum], al ;Store the drive number here
+   180 0000022E 488D7A08            <1>     lea rdi, qword [rdx + exFcb.filename]
+   181 00000232 48B83F3F3F3F3F3F3F- <1>     mov rax, "????????"
+   181 0000023B 3F                  <1>
+   182 0000023C 48AB                <1>     stosq
+   183 0000023E 66AB                <1>     stosw
+   184 00000240 AA                  <1>     stosb   
+   185 00000241 B800130000          <1>     mov eax, 1300h  ;FCB Delete
+   186 00000246 CD21                <1>     int 21h
+   187 00000248 EB2B                <1>     jmp short exit
+   188                              <1> renLbl:
+   189 0000024A 488D7A08            <1>     lea rdi, qword [rdx + exRenFcb.filename]
+   190 0000024E 48B83F3F3F3F3F3F3F- <1>     mov rax, "????????"
+   190 00000257 3F                  <1>
+   191 00000258 48AB                <1>     stosq
+   192 0000025A 66AB                <1>     stosw
+   193 0000025C AA                  <1>     stosb
+   194 0000025D 488D7A18            <1>     lea rdi, qword [rdx + exRenFcb.newName]
+   195 00000261 48A5                <1>     movsq
+   196 00000263 66A5                <1>     movsw
+   197 00000265 A4                  <1>     movsb
+   198 00000266 B800170000          <1>     mov eax, 1700h  ;FCB Rename
+   199 0000026B CD21                <1>     int 21h
+   200 0000026D 84C0                <1>     test al, al
+   201 0000026F 0F8521FFFFFF        <1>     jnz badLbL
+   202                              <1> exit:
+   203 00000275 E80E000000          <1>     call printCRLF
+   204 0000027A B8004C0000          <1>     mov eax, 4C00h
+   205 0000027F CD21                <1>     int 21h
+   206                              <1> ;Misc subroutines
+   207                              <1> printNewline:
+   208 00000281 E802000000          <1>     call printCRLF
+   209 00000286 EB07                <1>     jmp short printLF
+   210                              <1> printCRLF:
+   211 00000288 B20D                <1>     mov dl, CR
+   212 0000028A E802000000          <1>     call printChar
+   213                              <1> printLF:
+   214 0000028F B20A                <1>     mov dl, LF
+   215                              <1> printChar:
+   216 00000291 F60588000000FF      <1>     test byte [lblGvn], -1
+   217                              <1>     retnz
     45                              <2> cret nz
     19                              <3> %%_base:
     20                              <3> %assign baseVar %%_base-$$
@@ -994,24 +1039,24 @@
     31                              <3> %%a:
     32                              <3>  %endif
     33                              <3>  %else
-    34 0000023A 7401                <3>  j%-1 short %%a
+    34 00000298 7401                <3>  j%-1 short %%a
     35                              <3>  return
     13                              <4> %%_ret:
-    14 0000023C C3                  <4>  ret
+    14 0000029A C3                  <4>  ret
     15                              <4> %assign retOff %%_ret-$$
     36                              <3> %%a:
     37                              <3>  %endif
-   187 0000023D B800020000          <1>     mov eax, 0200h
-   188 00000242 CD21                <1>     int 21h
-   189                              <1>     return
+   218 0000029B B800020000          <1>     mov eax, 0200h
+   219 000002A0 CD21                <1>     int 21h
+   220                              <1>     return
     13                              <2> %%_ret:
-    14 00000244 C3                  <2>  ret
+    14 000002A2 C3                  <2>  ret
     15                              <2> %assign retOff %%_ret-$$
-   190                              <1> 
-   191                              <1> printStr:
-   192                              <1> ;Input: rdx -> Dollar terminated string to print
-   193 00000245 F60576000000FF      <1>     test byte [lblGvn], -1
-   194                              <1>     retnz
+   221                              <1> 
+   222                              <1> printStr:
+   223                              <1> ;Input: rdx -> Dollar terminated string to print
+   224 000002A3 F60576000000FF      <1>     test byte [lblGvn], -1
+   225                              <1>     retnz
     45                              <2> cret nz
     19                              <3> %%_base:
     20                              <3> %assign baseVar %%_base-$$
@@ -1020,7 +1065,7 @@
     23                              <3>  %ifdef currSegVBase
     24                              <3>  j%+1 short (retOff+currSegVBase)
     25                              <3>  %else
-    26 0000024C 75(44)              <3>  j%+1 short retOff
+    26 000002AA 75(A2)              <3>  j%+1 short retOff
     27                              <3>  %endif
     28                              <3>  %else
     29                              <3>  j%-1 short %%a
@@ -1032,192 +1077,206 @@
     35                              <3>  return
     36                              <3> %%a:
     37                              <3>  %endif
-   195 0000024E B800090000          <1>     mov eax, 0900h
-   196 00000253 CD21                <1>     int 21h
-   197                              <1>     return
-    13                              <2> %%_ret:
-    14 00000255 C3                  <2>  ret
-    15                              <2> %assign retOff %%_ret-$$
-   198                              <1> 
-   199                              <1> printLabel:
-   200 00000256 E8CFFFFFFF          <1>     call printCRLF   ;New line
-   201 0000025B 488D1562000000      <1>     lea rdx, volStr     ;Print Volume in drive string
-   202 00000262 E8DEFFFFFF          <1>     call printStr
-   203 00000267 8A1556000000        <1>     mov dl, byte [drvNum]
-   204 0000026D 80C240              <1>     add dl, "@" 
-   205 00000270 E8BEFFFFFF          <1>     call printChar
-   206 00000275 85ED                <1>     test ebp, ebp    ;If ebp=0, we have a label! If ebp=-1, no label
-   207 00000277 740D                <1>     jz .lblFnd
-   208                              <1>     ;Here if no label found
-   209 00000279 488D155A000000      <1>     lea rdx, volNoS ;Print no label string
-   210 00000280 E8C0FFFFFF          <1>     call printStr
-   211                              <1>     return
-    13                              <2> %%_ret:
-    14 00000285 C3                  <2>  ret
-    15                              <2> %assign retOff %%_ret-$$
-   212                              <1> .lblFnd:
-   213 00000286 488D1548000000      <1>     lea rdx, volOkS ;Print volume label
-   214 0000028D E8B3FFFFFF          <1>     call printStr
-   215 00000292 488D15CE000000      <1>     lea rdx, searchDta + exFcb.filename ;Get the returned FCB data
-   216 00000299 C6420B24            <1>     mov byte [rdx + 11],"$"             ;Terminate the string properly
-   217 0000029D E8A3FFFFFF          <1>     call printStr
-   218                              <1>     return
-    13                              <2> %%_ret:
-    14 000002A2 C3                  <2>  ret
-    15                              <2> %assign retOff %%_ret-$$
-   219                              <1> 
-   220                              <1> 
-   221                              <1> skipDelims:
-   222                              <1> ;Points rsi to the first non-delimiter char in a string, loads al with value
-   223 000002A3 AC                  <1>     lodsb
-   224 000002A4 E806000000          <1>     call isALDelim
-   225 000002A9 74F8                <1>     jz skipDelims
-   226                              <1> ;Else, point rsi back to that char :)
-   227 000002AB 48FFCE              <1>     dec rsi
+   226 000002AC B800090000          <1>     mov eax, 0900h
+   227 000002B1 CD21                <1>     int 21h
    228                              <1>     return
     13                              <2> %%_ret:
-    14 000002AE C3                  <2>  ret
+    14 000002B3 C3                  <2>  ret
     15                              <2> %assign retOff %%_ret-$$
    229                              <1> 
-   230                              <1> isALDelim:
-   231 000002AF 3C20                <1>     cmp al, SPC
-   232                              <1>     rete
-    49                              <2> cret e
-    19                              <3> %%_base:
-    20                              <3> %assign baseVar %%_base-$$
-    21                              <3>  %ifdef retOff
-    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
-    23                              <3>  %ifdef currSegVBase
-    24                              <3>  j%+1 short (retOff+currSegVBase)
-    25                              <3>  %else
-    26 000002B1 74(AE)              <3>  j%+1 short retOff
-    27                              <3>  %endif
-    28                              <3>  %else
-    29                              <3>  j%-1 short %%a
-    30                              <3>  return
-    31                              <3> %%a:
-    32                              <3>  %endif
-    33                              <3>  %else
-    34                              <3>  j%-1 short %%a
-    35                              <3>  return
-    36                              <3> %%a:
-    37                              <3>  %endif
-   233 000002B3 3C09                <1>     cmp al, TAB
-   234                              <1>     rete
-    49                              <2> cret e
-    19                              <3> %%_base:
-    20                              <3> %assign baseVar %%_base-$$
-    21                              <3>  %ifdef retOff
-    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
-    23                              <3>  %ifdef currSegVBase
-    24                              <3>  j%+1 short (retOff+currSegVBase)
-    25                              <3>  %else
-    26 000002B5 74(AE)              <3>  j%+1 short retOff
-    27                              <3>  %endif
-    28                              <3>  %else
-    29                              <3>  j%-1 short %%a
-    30                              <3>  return
-    31                              <3> %%a:
-    32                              <3>  %endif
-    33                              <3>  %else
-    34                              <3>  j%-1 short %%a
-    35                              <3>  return
-    36                              <3> %%a:
-    37                              <3>  %endif
-   235 000002B7 3C3D                <1>     cmp al, "="
-   236                              <1>     rete
-    49                              <2> cret e
-    19                              <3> %%_base:
-    20                              <3> %assign baseVar %%_base-$$
-    21                              <3>  %ifdef retOff
-    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
-    23                              <3>  %ifdef currSegVBase
-    24                              <3>  j%+1 short (retOff+currSegVBase)
-    25                              <3>  %else
-    26 000002B9 74(AE)              <3>  j%+1 short retOff
-    27                              <3>  %endif
-    28                              <3>  %else
-    29                              <3>  j%-1 short %%a
-    30                              <3>  return
-    31                              <3> %%a:
-    32                              <3>  %endif
-    33                              <3>  %else
-    34                              <3>  j%-1 short %%a
-    35                              <3>  return
-    36                              <3> %%a:
-    37                              <3>  %endif
-   237 000002BB 3C2C                <1>     cmp al, ","
-   238                              <1>     rete
-    49                              <2> cret e
-    19                              <3> %%_base:
-    20                              <3> %assign baseVar %%_base-$$
-    21                              <3>  %ifdef retOff
-    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
-    23                              <3>  %ifdef currSegVBase
-    24                              <3>  j%+1 short (retOff+currSegVBase)
-    25                              <3>  %else
-    26 000002BD 74(AE)              <3>  j%+1 short retOff
-    27                              <3>  %endif
-    28                              <3>  %else
-    29                              <3>  j%-1 short %%a
-    30                              <3>  return
-    31                              <3> %%a:
-    32                              <3>  %endif
-    33                              <3>  %else
-    34                              <3>  j%-1 short %%a
-    35                              <3>  return
-    36                              <3> %%a:
-    37                              <3>  %endif
-   239 000002BF 3C3B                <1>     cmp al, ";"
-   240                              <1>     return
+   230                              <1> printLabel:
+   231 000002B4 E8CFFFFFFF          <1>     call printCRLF   ;New line
+   232 000002B9 488D1562000000      <1>     lea rdx, volStr     ;Print Volume in drive string
+   233 000002C0 E8DEFFFFFF          <1>     call printStr
+   234 000002C5 8A1556000000        <1>     mov dl, byte [drvNum]
+   235 000002CB 80C240              <1>     add dl, "@" 
+   236 000002CE E8BEFFFFFF          <1>     call printChar
+   237 000002D3 85ED                <1>     test ebp, ebp    ;If ebp=0, we have a label! If ebp=-1, no label
+   238 000002D5 740D                <1>     jz .lblFnd
+   239                              <1>     ;Here if no label found
+   240 000002D7 488D155A000000      <1>     lea rdx, volNoS ;Print no label string
+   241 000002DE E8C0FFFFFF          <1>     call printStr
+   242                              <1>     return
     13                              <2> %%_ret:
-    14 000002C1 C3                  <2>  ret
+    14 000002E3 C3                  <2>  ret
+    15                              <2> %assign retOff %%_ret-$$
+   243                              <1> .lblFnd:
+   244 000002E4 488D1548000000      <1>     lea rdx, volOkS ;Print volume label
+   245 000002EB E8B3FFFFFF          <1>     call printStr
+   246 000002F0 488D153E010000      <1>     lea rdx, searchDta + exFcb.filename ;Get the returned FCB data
+   247 000002F7 C6420B24            <1>     mov byte [rdx + 11],"$"             ;Terminate the string properly
+   248 000002FB E8A3FFFFFF          <1>     call printStr
+   249                              <1>     return
+    13                              <2> %%_ret:
+    14 00000300 C3                  <2>  ret
+    15                              <2> %assign retOff %%_ret-$$
+   250                              <1> 
+   251                              <1> 
+   252                              <1> skipDelims:
+   253                              <1> ;Points rsi to the first non-delimiter char in a string, loads al with value
+   254 00000301 AC                  <1>     lodsb
+   255 00000302 E806000000          <1>     call isALDelim
+   256 00000307 74F8                <1>     jz skipDelims
+   257                              <1> ;Else, point rsi back to that char :)
+   258 00000309 48FFCE              <1>     dec rsi
+   259                              <1>     return
+    13                              <2> %%_ret:
+    14 0000030C C3                  <2>  ret
+    15                              <2> %assign retOff %%_ret-$$
+   260                              <1> 
+   261                              <1> isALDelim:
+   262 0000030D 3C20                <1>     cmp al, SPC
+   263                              <1>     rete
+    49                              <2> cret e
+    19                              <3> %%_base:
+    20                              <3> %assign baseVar %%_base-$$
+    21                              <3>  %ifdef retOff
+    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
+    23                              <3>  %ifdef currSegVBase
+    24                              <3>  j%+1 short (retOff+currSegVBase)
+    25                              <3>  %else
+    26 0000030F 74(0C)              <3>  j%+1 short retOff
+    27                              <3>  %endif
+    28                              <3>  %else
+    29                              <3>  j%-1 short %%a
+    30                              <3>  return
+    31                              <3> %%a:
+    32                              <3>  %endif
+    33                              <3>  %else
+    34                              <3>  j%-1 short %%a
+    35                              <3>  return
+    36                              <3> %%a:
+    37                              <3>  %endif
+   264 00000311 3C09                <1>     cmp al, TAB
+   265                              <1>     rete
+    49                              <2> cret e
+    19                              <3> %%_base:
+    20                              <3> %assign baseVar %%_base-$$
+    21                              <3>  %ifdef retOff
+    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
+    23                              <3>  %ifdef currSegVBase
+    24                              <3>  j%+1 short (retOff+currSegVBase)
+    25                              <3>  %else
+    26 00000313 74(0C)              <3>  j%+1 short retOff
+    27                              <3>  %endif
+    28                              <3>  %else
+    29                              <3>  j%-1 short %%a
+    30                              <3>  return
+    31                              <3> %%a:
+    32                              <3>  %endif
+    33                              <3>  %else
+    34                              <3>  j%-1 short %%a
+    35                              <3>  return
+    36                              <3> %%a:
+    37                              <3>  %endif
+   266 00000315 3C3D                <1>     cmp al, "="
+   267                              <1>     rete
+    49                              <2> cret e
+    19                              <3> %%_base:
+    20                              <3> %assign baseVar %%_base-$$
+    21                              <3>  %ifdef retOff
+    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
+    23                              <3>  %ifdef currSegVBase
+    24                              <3>  j%+1 short (retOff+currSegVBase)
+    25                              <3>  %else
+    26 00000317 74(0C)              <3>  j%+1 short retOff
+    27                              <3>  %endif
+    28                              <3>  %else
+    29                              <3>  j%-1 short %%a
+    30                              <3>  return
+    31                              <3> %%a:
+    32                              <3>  %endif
+    33                              <3>  %else
+    34                              <3>  j%-1 short %%a
+    35                              <3>  return
+    36                              <3> %%a:
+    37                              <3>  %endif
+   268 00000319 3C2C                <1>     cmp al, ","
+   269                              <1>     rete
+    49                              <2> cret e
+    19                              <3> %%_base:
+    20                              <3> %assign baseVar %%_base-$$
+    21                              <3>  %ifdef retOff
+    22                              <3>  %if (baseVar - retOff <= 126) && (baseVar > retOff)
+    23                              <3>  %ifdef currSegVBase
+    24                              <3>  j%+1 short (retOff+currSegVBase)
+    25                              <3>  %else
+    26 0000031B 74(0C)              <3>  j%+1 short retOff
+    27                              <3>  %endif
+    28                              <3>  %else
+    29                              <3>  j%-1 short %%a
+    30                              <3>  return
+    31                              <3> %%a:
+    32                              <3>  %endif
+    33                              <3>  %else
+    34                              <3>  j%-1 short %%a
+    35                              <3>  return
+    36                              <3> %%a:
+    37                              <3>  %endif
+   270 0000031D 3C3B                <1>     cmp al, ";"
+   271                              <1>     return
+    13                              <2> %%_ret:
+    14 0000031F C3                  <2>  ret
     15                              <2> %assign retOff %%_ret-$$
     19                                  %include "./dat/lbldat.asm"
      1                              <1> 
      2                              <1> ;Label data
      3                              <1> 
-     4 000002C2 00                  <1> lblGvn  db 0    ;If set, the label is in the inBuffer already
-     5 000002C3 00                  <1> drvNum  db 0    ;1 based drive number we are modifying label for
+     4 00000320 00                  <1> lblGvn  db 0    ;If set, the label is in the inBuffer already
+     5 00000321 00                  <1> drvNum  db 0    ;1 based drive number we are modifying label for
      6                              <1> 
      7                              <1> ;Strings
-     8 000002C4 566F6C756D6520696E- <1> volStr  db "Volume in drive $"
-     8 000002CD 2064726976652024    <1>
-     9 000002D5 2069732024          <1> volOkS  db " is $"
-    10 000002DA 20686173206E6F206C- <1> volNoS  db " has no label$"
-    10 000002E3 6162656C24          <1>
-    11 000002E8 496E76616C69642063- <1> vBadStr db "Invalid characters in volume label",CR,LF
-    11 000002F1 686172616374657273- <1>
-    11 000002FA 20696E20766F6C756D- <1>
-    11 00000303 65206C6162656C0D0A  <1>
-    12 0000030C 566F6C756D65206C61- <1> vPrmptS db "Volume label (11 characters, ENTER for none)? $"
-    12 00000315 62656C202831312063- <1>
-    12 0000031E 686172616374657273- <1>
-    12 00000327 2C20454E5445522066- <1>
-    12 00000330 6F72206E6F6E65293F- <1>
-    12 00000339 2024                <1>
-    13 0000033B 44656C657465206375- <1> delStr  db "Delete current volume label (Y/N)? $"
-    13 00000344 7272656E7420766F6C- <1>
-    13 0000034D 756D65206C6162656C- <1>
-    13 00000356 2028592F4E293F2024  <1>
-    14                              <1> ;Static Allocations
-    15 0000035F 000000000000000000- <1> searchDta   db ffBlock_size dup (0)  ;This is where we get the label info
-    15 00000368 000000000000000000- <1>
-    15 00000371 000000000000000000- <1>
-    15 0000037A 000000000000000000- <1>
-    15 00000383 00000000000000      <1>
-    16                              <1> volFcb:
-    17                              <1>     istruc exFcb
-    18 0000038A FF                  <1>     at exFcb.extSig,    db -1   ;Indicate extended FCB
-    19 0000038B 00<rep 5h>08        <1>     at exFcb.attribute, db volLabelFile
-    20 00000391 00                  <1>     at exFcb.driveNum,  db 0    ;Current drive
-    21 00000392 3F3F3F3F3F3F3F3F    <1>     at exFcb.filename,  db "????????"
-    22 0000039A 3F3F3F              <1>     at exFcb.fileext,   db "???"
-    23 0000039D 00000000            <1>     at exFcb.curBlock,  dd 0
-    24 000003A1 00<rep 15h>         <1>     iend 
-    25                              <1> 
-    26 000003B6 0C0020202020202020- <1> inBuffer    db 12, 0, 12 dup (SPC)
-    26 000003BF 2020202020          <1>
+     8 00000322 566F6C756D6520696E- <1> volStr  db "Volume in drive $"
+     8 0000032B 2064726976652024    <1>
+     9 00000333 2069732024          <1> volOkS  db " is $"
+    10 00000338 20686173206E6F206C- <1> volNoS  db " has no label$"
+    10 00000341 6162656C24          <1>
+    11 00000346 496E76616C69642063- <1> vBadStr db "Invalid characters in volume label",CR,LF
+    11 0000034F 686172616374657273- <1>
+    11 00000358 20696E20766F6C756D- <1>
+    11 00000361 65206C6162656C0D0A  <1>
+    12 0000036A 566F6C756D65206C61- <1> vPrmptS db "Volume label (11 characters, ENTER for none)? $"
+    12 00000373 62656C202831312063- <1>
+    12 0000037C 686172616374657273- <1>
+    12 00000385 2C20454E5445522066- <1>
+    12 0000038E 6F72206E6F6E65293F- <1>
+    12 00000397 2024                <1>
+    13 00000399 44656C657465206375- <1> delStr  db "Delete current volume label (Y/N)? $"
+    13 000003A2 7272656E7420766F6C- <1>
+    13 000003AB 756D65206C6162656C- <1>
+    13 000003B4 2028592F4E293F2024  <1>
+    14 000003BD 496E76616C69642064- <1> badDrv  db "Invalid drive specification",CR,LF,"$"
+    14 000003C6 726976652073706563- <1>
+    14 000003CF 696669636174696F6E- <1>
+    14 000003D8 0D0A24              <1>
+    15 000003DB 43616E6E6F74204C41- <1> jsaDrv  db "Cannot LABEL a JOINed, SUBSTed or ASSIGNed drive",CR,LF,"$"
+    15 000003E4 42454C2061204A4F49- <1>
+    15 000003ED 4E65642C2053554253- <1>
+    15 000003F6 546564206F72204153- <1>
+    15 000003FF 5349474E6564206472- <1>
+    15 00000408 6976650D0A24        <1>
+    16 0000040E 43616E6E6F74204C41- <1> netDrv  db "Cannot LABEL a Network drive",CR,LF,"$"
+    16 00000417 42454C2061204E6574- <1>
+    16 00000420 776F726B2064726976- <1>
+    16 00000429 650D0A24            <1>
+    17                              <1> ;Static Allocations
+    18 0000042D 000000000000000000- <1> searchDta   db ffBlock_size dup (0)  ;This is where we get the label info
+    18 00000436 000000000000000000- <1>
+    18 0000043F 000000000000000000- <1>
+    18 00000448 000000000000000000- <1>
+    18 00000451 00000000000000      <1>
+    19                              <1> volFcb:
+    20                              <1>     istruc exFcb
+    21 00000458 FF                  <1>     at exFcb.extSig,    db -1   ;Indicate extended FCB
+    22 00000459 00<rep 5h>08        <1>     at exFcb.attribute, db volLabelFile
+    23 0000045F 00                  <1>     at exFcb.driveNum,  db 0    ;Current drive
+    24 00000460 3F3F3F3F3F3F3F3F    <1>     at exFcb.filename,  db "????????"
+    25 00000468 3F3F3F              <1>     at exFcb.fileext,   db "???"
+    26 0000046B 00000000            <1>     at exFcb.curBlock,  dd 0
+    27 0000046F 00<rep 15h>         <1>     iend 
+    28                              <1> 
+    29 00000484 0C0020202020202020- <1> inBuffer    db 12, 0, 12 dup (SPC)
+    29 0000048D 2020202020          <1>
     20                                  ;Use a 45 QWORD stack
     21                                  Segment transient align=8 follows=.text nobits
     22 00000000 <res 168h>                  dq 45 dup (?)

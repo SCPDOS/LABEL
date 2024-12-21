@@ -49,13 +49,44 @@ processCmdline:
 ;Now ensure that a drive number of 0 is converted to the actual 1 based number
     mov al, byte [drvNum]
     test al, al
-    jnz setDTA
+    jnz doDrvCheck
     mov eax, 1900h  ;Get the current 0 based drive number in al
     int 21h
     inc al
     mov byte [drvNum], al
+doDrvCheck:
+;Make sure the drive chosen is not SUBST/JOIN/NET.
+    movzx ecx, al ;Save the 1 based drive number in ecx
+    mov eax, 5200h
+    int 21h
+    cmp byte [rbx + sysVars.lastdrvNum], cl
+    jnb .drvOk
+.badDrvExit:
+    lea rdx, badDrv
+.badPrintExit:
+    mov eax, 0900h
+    int 21h
+    mov eax, 4CFFh
+    int 21h
+.drvOk:
+    dec cl  ;Turn into an offset into the CDS
+    mov rdi, qword [rbx + sysVars.cdsHeadPtr]
+    mov eax, cds_size
+    mul ecx
+    add rdi, rax
+    test word [rdi + cds.wFlags], cdsValidDrive
+    jz .badDrvExit  ;If it is not valid, error out!
+    test word [rdi + cds.wFlags], cdsRedirDrive
+    jz .drvNotNet
+    lea rdx, netDrv
+    jmp short .badPrintExit
+.drvNotNet:
+    test word [rdi + cds.wFlags], cdsSubstDrive | cdsJoinDrive
+    jz setDTA
+    lea rdx, jsaDrv
+    jmp short .badPrintExit
 setDTA:
-;Set the DTA to an internal DTA and do a find first
+;Now set the DTA to an internal DTA and do a find first
     lea rdx, searchDta
     mov eax, 1A00h  ;Set DTA to interneal data
     int 21h

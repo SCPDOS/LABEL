@@ -496,3 +496,17 @@ badChar     equ 1   ;Bad ASCIIZ filename char
 termChar    equ 2   ;Terminator char type
 sepChar     equ 4   ;Separator char type
 badFCBChar  equ 8   ;FCB filename char
+
+struc sysVars
+    dq ?
+    dq ?
+    dq ?
+    dq ?
+    dw ?
+    dq ?
+    .cdsHeadPtr  dq ?
+    dq ?
+    dw ?
+    db ?
+    .lastdrvNum  db ?
+endstruc

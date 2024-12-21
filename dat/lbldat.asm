@@ -11,6 +11,9 @@ volNoS  db " has no label$"
 vBadStr db "Invalid characters in volume label",CR,LF
 vPrmptS db "Volume label (11 characters, ENTER for none)? $"
 delStr  db "Delete current volume label (Y/N)? $"
+badDrv  db "Invalid drive specification",CR,LF,"$"
+jsaDrv  db "Cannot LABEL a JOINed, SUBSTed or ASSIGNed drive",CR,LF,"$"
+netDrv  db "Cannot LABEL a Network drive",CR,LF,"$"
 ;Static Allocations
 searchDta   db ffBlock_size dup (0)  ;This is where we get the label info
 volFcb:
