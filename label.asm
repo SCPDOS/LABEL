@@ -15,6 +15,7 @@ BITS 64
 %include "./inc/dosStruc.inc"
 %include "./inc/dosError.inc"
 %include "./inc/fcbStruc.inc"
+%include "./inc/label.inc"
 %include "./src/lblsrc.asm"
 %include "./dat/lbldat.asm"
 ;Use a 45 QWORD stack

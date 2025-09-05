@@ -26,4 +26,14 @@ volFcb:
     at exFcb.curBlock,  dd 0
     iend 
 
-inBuffer    db 12, 0, 12 dup (SPC)
+paramBlk:
+    istruc idParamBlk
+    at idParamBlk.wCallLvl, db 0
+    at idParamBlk.volId,    dd 0
+    at idParamBlk.volLab,   db "NO NAME    "
+    at idParamBlk.filSysType,   db "        "
+    iend
+
+defaultLbl  db "NO NAME    "
+
+inBuffer    db 12, 0, 15 dup (SPC)  ;Add some padding

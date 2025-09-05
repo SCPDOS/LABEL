@@ -91,12 +91,8 @@ setDTA:
     mov eax, 1A00h  ;Set DTA to interneal data
     int 21h
 
-    lea rdx, volFcb
-    mov al, byte [drvNum]   ;Get the 1 based drive number
-    mov byte [rdx + exFcb.driveNum], al    ;Store in search FCB
-    mov eax, 1100h  ;Find First FCB
-    int 21h
-    movsx ebp, al
+    call getLabel
+    movsx ebp, al   ;Save the ret code. If 0, label exists. If -1, no label
 
     call printLabel
     mov al, byte [lblGvn]   ;Check the command line lbl flag
@@ -121,7 +117,7 @@ parseLbl:
     lea rdx, volFcb
     mov al, byte [drvNum]
     mov byte [rdx + exFcb.driveNum], al ;Store the drive number here
-    test ebp, ebp
+    test ebp, ebp   ;epb acts as a flag for if a label already exists!!
     jz renLbl
 mkLbl:
     lea rdi, qword [rdx + exFcb.filename]
@@ -131,7 +127,11 @@ mkLbl:
     mov eax, 1600h  ;FCB Create
     int 21h
     test al, al
-    jz exit
+    jnz badLbL
+    call getLabel   ;Ensure we read the set disk label from dir
+    lea rsi, searchDta + exFcb.filename ;Set rsi for bsSync
+    jmp exitSync
+
 badLbL:
     xor eax, eax
     xchg al, byte [lblGvn]    ;No longer use the label given if one was given!
@@ -145,16 +145,16 @@ badLbL:
     call printStr
     lea rdi, inBuffer + 2
     mov byte [rdi - 1], 0
-    inc rdi
     mov al, SPC
     mov cl, 12
     rep stosb
     pop rax ;Get the lblGvn status
     jmp inLbL
+
 delLbl:
-    test ebp, ebp   ;If there is no label, just exit
-    jnz exit
-.l1:
+    test ebp, ebp   ;If there is no label, just exit w/o sync
+    jnz exitNoSync
+.lp:
     call printCRLF
     lea rdx, delStr
     call printStr
@@ -163,29 +163,23 @@ delLbl:
     mov eax, 0A00h
     int 21h
     call printCRLF
-    mov al, byte [inBuffer + 2]
-    push rax
-    mov eax, 1213h  ;Uppercase the char
-    int 2fh
-    pop rbx
-    cmp al, "N"
-    je exit
-    cmp al, "Y"
-    je .goDel
-    jmp short .l1
-.goDel:
-    lea rdx, volFcb
-    mov al, byte [drvNum]
-    mov byte [rdx + exFcb.driveNum], al ;Store the drive number here
-    lea rdi, qword [rdx + exFcb.filename]
-    mov rax, "????????"
-    stosq
-    stosw
-    stosb   
-    mov eax, 1300h  ;FCB Delete
+    cmp byte [inBuffer + 1], 1
+    jne .lp
+    mov dl, byte [inBuffer + 2]
+    mov eax, 6523h  ;Check Yes/No (upper word zeroed)
     int 21h
-    jmp short exit
+    cmp eax, 1  ;Are we yes? Fallthrough if so
+    ja .lp      ;eax = 2, neither
+    jb exitNoSync   ;eax = 0, No, exit w/o syncing
+    lea rdx, volFcb ;Already setup drive and all ???? for deleting
+    mov eax, 1300h  ;FCB Delete (if a bad dir with many labels, deletes all)
+    int 21h
+    lea rsi, defaultLbl    ;Sync the default label
+    jmp short exitSync
+
 renLbl:
+;First compare the names. If they are the same, just exit oki.
+;Always update BPB though.
     lea rdi, qword [rdx + exRenFcb.filename]
     mov rax, "????????"
     stosq
@@ -197,12 +191,34 @@ renLbl:
     movsb
     mov eax, 1700h  ;FCB Rename
     int 21h
-    test al, al
-    jnz badLbL
-exit:
+    call getLabel   ;Now check the label is as we set it
+    lea rsi, searchDta + exFcb.filename
+    lea rdi, inBuffer + 2
+    mov byte [rsi + 11], 0  ;Turn into ASCIIZ strings
+    mov byte [rdi + 11], 0
+    mov eax, 121Eh  ;Preserves rsi
+    int 2fh         ;Filename specific string comp
+    jne badLbL
+exitSync:
+;Here we update the Boot sector with the label since we wrote the FS entry
+;Enter with rsi -> String to place in the bootsector
+    lea rdx, paramBlk
+    movzx ebx, byte [drvNum]
+    mov eax, 6900h  ;Get current bootsector data
+    int 21h
+;Copy the new label over
+    lea rdi, qword [rdx + idParamBlk.volLab]
+    mov ecx, 11
+    rep movsb
+;Sync it back
+    mov eax, 6901h
+    int 21h
+exitNoSync:
     call printCRLF
     mov eax, 4C00h
     int 21h
+
+
 ;Misc subroutines
 printNewline:
     call printCRLF
@@ -268,4 +284,12 @@ isALDelim:
     cmp al, ","
     rete
     cmp al, ";"
+    return
+
+getLabel:
+    lea rdx, volFcb
+    mov al, byte [drvNum]   ;Get the 1 based drive number
+    mov byte [rdx + exFcb.driveNum], al    ;Store in search FCB
+    mov eax, 1100h  ;Find First FCB
+    int 21h
     return

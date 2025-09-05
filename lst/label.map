@@ -11,15 +11,15 @@ Output file:  ./bin/LABEL.COM
 -- Sections (summary) ---------------------------------------------------------
 
 Vstart            Start             Stop              Length    Class     Name
-               0                 0               492  00000492  progbits  .text
-             498               498               600  00000168  nobits    transient
+               0                 0               505  00000505  progbits  .text
+             508               508               670  00000168  nobits    transient
 
 -- Sections (detailed) --------------------------------------------------------
 
 ---- Section .text ------------------------------------------------------------
 
 class:     progbits
-length:                 492
+length:                 505
 start:                    0
 align:     not defined
 follows:   not defined
@@ -31,10 +31,10 @@ vfollows:  not defined
 
 class:     nobits
 length:                 168
-start:                  498
+start:                  508
 align:                    8
 follows:   not defined
-vstart:                 498
+vstart:                 508
 valign:                   8
 vfollows:  .text
 
@@ -503,6 +503,12 @@ Value     Name
 00000002  shareNet.relClust
 00000004  shareNet.absClust
 00000006  shareNet_size
+00000000  idParamBlk
+00000000  idParamBlk.wCallLvl
+00000002  idParamBlk.volId
+00000006  idParamBlk.volLab
+00000011  idParamBlk.filSysType
+00000019  idParamBlk_size
 
 
 ---- Section .text ------------------------------------------------------------
@@ -519,58 +525,63 @@ Real              Virtual           Name
               B0                B0  doDrvCheck.drvOk
               D9                D9  doDrvCheck.drvNotNet
               EA                EA  setDTA
-             121               121  getLbL
-             132               132  inLbL
-             154               154  parseLbl
-             17E               17E  mkLbl
-             196               196  badLbL
-             1A8               1A8  badLbL.l1
-             1D3               1D3  delLbl
-             1DB               1DB  delLbl.l1
-             21E               21E  delLbl.goDel
-             24A               24A  renLbl
-             275               275  exit
-             281               281  printNewline
-             288               288  printCRLF
-             28F               28F  printLF
-             291               291  printChar
-             298               298  ..@71._base
-             29A               29A  ..@72._ret
-             29B               29B  ..@71.a
-             2A2               2A2  ..@73._ret
-             2A3               2A3  printStr
-             2AA               2AA  ..@75._base
-             2B3               2B3  ..@76._ret
-             2B4               2B4  printLabel
-             2E3               2E3  ..@77._ret
-             2E4               2E4  printLabel.lblFnd
-             300               300  ..@78._ret
-             301               301  skipDelims
-             30C               30C  ..@79._ret
-             30D               30D  isALDelim
-             30F               30F  ..@81._base
-             313               313  ..@83._base
-             317               317  ..@85._base
-             31B               31B  ..@87._base
-             31F               31F  ..@88._ret
-             320               320  lblGvn
-             321               321  drvNum
-             322               322  volStr
-             333               333  volOkS
-             338               338  volNoS
-             346               346  vBadStr
-             36A               36A  vPrmptS
-             399               399  delStr
-             3BD               3BD  badDrv
-             3DB               3DB  jsaDrv
-             40E               40E  netDrv
-             42D               42D  searchDta
-             458               458  volFcb
-             458               458  ..@90.strucstart
-             484               484  inBuffer
+             10F               10F  getLbL
+             120               120  inLbL
+             142               142  parseLbl
+             16C               16C  mkLbl
+             191               191  badLbL
+             1A3               1A3  badLbL.l1
+             1CB               1CB  delLbl
+             1D3               1D3  delLbl.lp
+             237               237  renLbl
+             282               282  exitSync
+             2A9               2A9  exitNoSync
+             2B5               2B5  printNewline
+             2BC               2BC  printCRLF
+             2C3               2C3  printLF
+             2C5               2C5  printChar
+             2CC               2CC  ..@74._base
+             2CE               2CE  ..@75._ret
+             2CF               2CF  ..@74.a
+             2D6               2D6  ..@76._ret
+             2D7               2D7  printStr
+             2DE               2DE  ..@78._base
+             2E7               2E7  ..@79._ret
+             2E8               2E8  printLabel
+             317               317  ..@80._ret
+             318               318  printLabel.lblFnd
+             334               334  ..@81._ret
+             335               335  skipDelims
+             340               340  ..@82._ret
+             341               341  isALDelim
+             343               343  ..@84._base
+             347               347  ..@86._base
+             34B               34B  ..@88._base
+             34F               34F  ..@90._base
+             353               353  ..@91._ret
+             354               354  getLabel
+             36B               36B  ..@92._ret
+             36C               36C  lblGvn
+             36D               36D  drvNum
+             36E               36E  volStr
+             37F               37F  volOkS
+             384               384  volNoS
+             392               392  vBadStr
+             3B6               3B6  vPrmptS
+             3E5               3E5  delStr
+             409               409  badDrv
+             427               427  jsaDrv
+             45A               45A  netDrv
+             479               479  searchDta
+             4A4               4A4  volFcb
+             4A4               4A4  ..@94.strucstart
+             4D0               4D0  paramBlk
+             4D0               4D0  ..@103.strucstart
+             4E9               4E9  defaultLbl
+             4F4               4F4  inBuffer
 
 ---- Section transient --------------------------------------------------------
 
 Real              Virtual           Name
-             600               600  endOfAlloc
+             670               670  endOfAlloc
 
