@@ -174,7 +174,6 @@ delLbl:
     lea rdx, volFcb ;Already setup drive and all ???? for deleting
     mov eax, 1300h  ;FCB Delete (if a bad dir with many labels, deletes all)
     int 21h
-    lea rsi, defaultLbl    ;Sync the default label
     jmp short exit
 
 renLbl:

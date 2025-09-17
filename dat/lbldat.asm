@@ -26,6 +26,4 @@ volFcb:
     at exFcb.curBlock,  dd 0
     iend 
 
-defaultLbl  db "NO NAME    "
-
 inBuffer    db 12, 0, 15 dup (SPC)  ;Add some padding
