@@ -124,7 +124,6 @@ mkLbl:
     movsq
     movsw
     movsb
-    breakpoint
     mov eax, 1600h  ;FCB Create
     int 21h
     test al, al
