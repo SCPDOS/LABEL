@@ -124,13 +124,14 @@ mkLbl:
     movsq
     movsw
     movsb
+    breakpoint
     mov eax, 1600h  ;FCB Create
     int 21h
     test al, al
     jnz badLbL
     call getLabel   ;Ensure we read the set disk label from dir
     lea rsi, searchDta + exFcb.filename ;Set rsi for bsSync
-    jmp exitSync
+    jmp exit
 
 badLbL:
     xor eax, eax
@@ -152,8 +153,8 @@ badLbL:
     jmp inLbL
 
 delLbl:
-    test ebp, ebp   ;If there is no label, just exit w/o sync
-    jnz exitNoSync
+    test ebp, ebp   ;If there is no label, just exit 
+    jnz exit
 .lp:
     call printCRLF
     lea rdx, delStr
@@ -170,12 +171,12 @@ delLbl:
     int 21h
     cmp eax, 1  ;Are we yes? Fallthrough if so
     ja .lp      ;eax = 2, neither
-    jb exitNoSync   ;eax = 0, No, exit w/o syncing
+    jb exit   ;eax = 0, No, exit 
     lea rdx, volFcb ;Already setup drive and all ???? for deleting
     mov eax, 1300h  ;FCB Delete (if a bad dir with many labels, deletes all)
     int 21h
     lea rsi, defaultLbl    ;Sync the default label
-    jmp short exitSync
+    jmp short exit
 
 renLbl:
 ;First compare the names. If they are the same, just exit oki.
@@ -199,21 +200,7 @@ renLbl:
     mov eax, 121Eh  ;Preserves rsi
     int 2fh         ;Filename specific string comp
     jne badLbL
-exitSync:
-;Here we update the Boot sector with the label since we wrote the FS entry
-;Enter with rsi -> String to place in the bootsector
-    lea rdx, paramBlk
-    movzx ebx, byte [drvNum]
-    mov eax, 6900h  ;Get current bootsector data
-    int 21h
-;Copy the new label over
-    lea rdi, qword [rdx + idParamBlk.volLab]
-    mov ecx, 11
-    rep movsb
-;Sync it back
-    mov eax, 6901h
-    int 21h
-exitNoSync:
+exit:
     call printCRLF
     mov eax, 4C00h
     int 21h
